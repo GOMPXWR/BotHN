@@ -1,4 +1,7 @@
-
+// =====================
+// Honduras News Bot 🇭🇳
+// Con soporte .env
+// =====================
 
 import { 
     Client, 
@@ -10,9 +13,17 @@ import {
 } from "discord.js";
 
 import Parser from "rss-parser";
-import "dotenv/config"; // Requiere TOKEN en Railway .env
+import 'dotenv/config'; // Lee el .env
 
+const TOKEN = process.env.TOKEN;
+if (!TOKEN) {
+    console.error("❌ ERROR: No se encontró TOKEN en .env");
+    process.exit(1);
+}
 
+// ======================
+//  RSS Feeds del Bot
+// ======================
 const rss = new Parser();
 
 const FEEDS = {
@@ -29,12 +40,16 @@ const FEEDS = {
     ]
 };
 
-
+// ========================================
+// Crear cliente del bot
+// ========================================
 const bot = new Client({
     intents: [GatewayIntentBits.Guilds]
 });
 
-
+// ==================================
+// Slash command /noticias
+// ==================================
 const command = new SlashCommandBuilder()
     .setName("noticias")
     .setDescription("Ver noticias recientes de Honduras")
@@ -49,11 +64,13 @@ const command = new SlashCommandBuilder()
         )
     );
 
-
+// ==============================
+// Registrar comandos al iniciar
+// ==============================
 bot.once("ready", async () => {
     console.log(`Bot conectado como ➤ ${bot.user.tag} 🇭🇳`);
 
-    const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
+    const rest = new REST({ version: "10" }).setToken(TOKEN);
 
     try {
         await rest.put(
@@ -61,13 +78,15 @@ bot.once("ready", async () => {
             { body: [command.toJSON()] }
         );
 
-        console.log("Slash commands registrados globalmente ✔");
+        console.log("Slash commands registrados ✔");
     } catch(e) {
         console.error("Error registrando comandos:", e);
     }
 });
 
-
+// =====================
+// Evento interacción
+// =====================
 bot.on("interactionCreate", async interaction => {
     if (!interaction.isChatInputCommand()) return;
     if (interaction.commandName !== "noticias") return;
@@ -75,13 +94,13 @@ bot.on("interactionCreate", async interaction => {
     const tipo = interaction.options.getString("tipo");
     const urls = FEEDS[tipo];
 
-    await interaction.deferReply(); // por si tarda el fetch
+    await interaction.deferReply();
 
     let noticias = [];
 
     for (let url of urls) {
         const data = await rss.parseURL(url);
-        noticias.push(...data.items.slice(0, 3)); // 3 noticias recientes
+        noticias.push(...data.items.slice(0, 3));
     }
 
     const embed = new EmbedBuilder()
@@ -95,5 +114,7 @@ bot.on("interactionCreate", async interaction => {
     interaction.editReply({ embeds: [embed] });
 });
 
-
-bot.login(process.env.TOKEN);
+// =====================
+// LOGIN
+// =====================
+bot.login(TOKEN);
