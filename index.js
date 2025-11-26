@@ -14,6 +14,7 @@ import {
 
 import Parser from "rss-parser";
 import 'dotenv/config'; // Lee .env
+import fetch from "node-fetch";
 
 // =====================
 // Manejo global de errores
@@ -52,7 +53,12 @@ if (!TOKEN) {
 // =====================
 // RSS Feeds
 // =====================
-const rss = new Parser();
+const rss = new Parser({
+    requestOptions: {
+        timeout: 10000,
+        headers: { 'User-Agent': 'BotHN/1.0' }
+    }
+});
 
 const FEEDS = {
     nacionales: [
@@ -67,6 +73,19 @@ const FEEDS = {
         "https://www.xataka.com/tag/honduras/rss"
     ]
 };
+
+// =====================
+// Función segura para parsear feeds
+// =====================
+async function safeParse(url) {
+    try {
+        const data = await rss.parseURL(url);
+        return data.items.slice(0, 3);
+    } catch (err) {
+        console.warn(`⚠ No se pudo parsear el feed ${url}:`, err.message);
+        return []; // Devuelve vacío y sigue con los demás
+    }
+}
 
 // =====================
 // Slash command /noticias
@@ -117,14 +136,9 @@ bot.on("interactionCreate", async interaction => {
     await interaction.deferReply();
 
     let noticias = [];
-
     for (let url of urls) {
-        try {
-            const data = await rss.parseURL(url);
-            noticias.push(...data.items.slice(0, 3));
-        } catch (err) {
-            console.warn(`⚠ No se pudo leer RSS ${url}, se ignora:`, err.message);
-        }
+        const items = await safeParse(url);
+        noticias.push(...items);
     }
 
     if (noticias.length === 0) {
