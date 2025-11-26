@@ -1,6 +1,6 @@
 // =====================
 // Honduras News Bot 🇭🇳
-// Con soporte .env
+// Con soporte .env y manejo de errores
 // =====================
 
 import { 
@@ -14,6 +14,13 @@ import {
 
 import Parser from "rss-parser";
 import 'dotenv/config'; // Lee el .env
+
+// =====================
+// Manejo global de errores
+// =====================
+process.on("unhandledRejection", (err) => {
+    console.error("Unhandled promise rejection:", err);
+});
 
 const TOKEN = process.env.TOKEN;
 if (!TOKEN) {
@@ -99,8 +106,16 @@ bot.on("interactionCreate", async interaction => {
     let noticias = [];
 
     for (let url of urls) {
-        const data = await rss.parseURL(url);
-        noticias.push(...data.items.slice(0, 3));
+        try {
+            const data = await rss.parseURL(url);
+            noticias.push(...data.items.slice(0, 3));
+        } catch (err) {
+            console.error(`❌ Error al leer RSS ${url}:`, err.message);
+        }
+    }
+
+    if (noticias.length === 0) {
+        return interaction.editReply("⚠️ No se pudieron cargar noticias. Intenta más tarde.");
     }
 
     const embed = new EmbedBuilder()
