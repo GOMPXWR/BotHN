@@ -1,6 +1,6 @@
 // =====================
 // Honduras News Bot 🇭🇳
-// Con soporte .env y manejo de errores
+// Estable y seguro
 // =====================
 
 import { 
@@ -13,7 +13,7 @@ import {
 } from "discord.js";
 
 import Parser from "rss-parser";
-import 'dotenv/config'; // Lee el .env
+import 'dotenv/config'; // Lee .env
 
 // =====================
 // Manejo global de errores
@@ -21,16 +21,37 @@ import 'dotenv/config'; // Lee el .env
 process.on("unhandledRejection", (err) => {
     console.error("Unhandled promise rejection:", err);
 });
+process.on("uncaughtException", (err) => {
+    console.error("Uncaught exception:", err);
+});
+process.on("error", (err) => {
+    console.error("Error global:", err);
+});
 
+// =====================
+// Crear cliente Discord
+// =====================
+const bot = new Client({
+    intents: [GatewayIntentBits.Guilds]
+});
+
+// Manejar errores del cliente
+bot.on("error", (err) => {
+    console.error("Error en cliente Discord:", err);
+});
+
+// =====================
+// TOKEN
+// =====================
 const TOKEN = process.env.TOKEN;
 if (!TOKEN) {
     console.error("❌ ERROR: No se encontró TOKEN en .env");
     process.exit(1);
 }
 
-// ======================
-//  RSS Feeds del Bot
-// ======================
+// =====================
+// RSS Feeds
+// =====================
 const rss = new Parser();
 
 const FEEDS = {
@@ -47,16 +68,9 @@ const FEEDS = {
     ]
 };
 
-// ========================================
-// Crear cliente del bot
-// ========================================
-const bot = new Client({
-    intents: [GatewayIntentBits.Guilds]
-});
-
-// ==================================
+// =====================
 // Slash command /noticias
-// ==================================
+// =====================
 const command = new SlashCommandBuilder()
     .setName("noticias")
     .setDescription("Ver noticias recientes de Honduras")
@@ -71,9 +85,9 @@ const command = new SlashCommandBuilder()
         )
     );
 
-// ==============================
-// Registrar comandos al iniciar
-// ==============================
+// =====================
+// Registrar comando
+// =====================
 bot.once("ready", async () => {
     console.log(`Bot conectado como ➤ ${bot.user.tag} 🇭🇳`);
 
@@ -84,7 +98,6 @@ bot.once("ready", async () => {
             Routes.applicationCommands(bot.user.id),
             { body: [command.toJSON()] }
         );
-
         console.log("Slash commands registrados ✔");
     } catch(e) {
         console.error("Error registrando comandos:", e);
@@ -92,7 +105,7 @@ bot.once("ready", async () => {
 });
 
 // =====================
-// Evento interacción
+// Manejar interacción
 // =====================
 bot.on("interactionCreate", async interaction => {
     if (!interaction.isChatInputCommand()) return;
@@ -110,7 +123,7 @@ bot.on("interactionCreate", async interaction => {
             const data = await rss.parseURL(url);
             noticias.push(...data.items.slice(0, 3));
         } catch (err) {
-            console.error(`❌ Error al leer RSS ${url}:`, err.message);
+            console.warn(`⚠ No se pudo leer RSS ${url}, se ignora:`, err.message);
         }
     }
 
